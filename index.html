@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>꾹AI:쇼케이스 - 최종 안정화 버전 (가운데 정렬)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;800&display=swap');
+        body { font-family: 'Pretendard', sans-serif; letter-spacing: -0.01em; }
+        :root { --dome-green: #329946; }
+        .bg-dome { background-color: var(--dome-green); }
+        .text-dome { color: var(--dome-green); }
+        
+        .selected-card { outline: 2px solid var(--dome-green) !important; outline-offset: -2px; background-color: #f0fdf4 !important; transform: translateY(-5px); transition: all 0.2s; z-index: 10; }
+        .check-badge { display: none; position: absolute; top: 12px; right: 12px; z-index: 20; width: 28px; height: 28px; background: var(--dome-green); color: white; border-radius: 50%; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .selected-card .check-badge { display: flex; animation: scaleIn 0.2s ease-out; }
+        @keyframes scaleIn { from { transform: scale(0); } to { transform: scale(1); } }
+
+        #selected-list::-webkit-scrollbar { height: 6px; }
+        #selected-list::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+        .mini-thumb { width: 48px; height: 48px; flex-shrink: 0; border-radius: 10px; overflow: hidden; border: 2px solid rgba(255,255,255,0.2); }
+        .mini-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .tab-active { border-bottom: 3px solid var(--dome-green); color: var(--dome-green); font-weight: 800; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen pb-48">
+
+    <header class="bg-white border-b px-6 h-16 flex justify-between items-center sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-dome text-white rounded-xl flex items-center justify-center shadow-lg"><i class="fa-solid fa-wand-magic-sparkles text-xl"></i></div>
+            <h1 class="text-xl font-black text-gray-900 tracking-tighter">꾹AI: <span class="text-dome">쇼케이스</span></h1>
+        </div>
+        <button onclick="location.reload()" class="hidden bg-gray-100 text-gray-600 px-5 py-2 rounded-xl text-xs font-black hover:bg-gray-200 transition-colors" id="restart-btn">처음으로</button>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-6 md:p-10">
+        <div id="search-section" class="max-w-2xl mx-auto mb-10">
+            <div class="flex border-b mb-6 text-sm text-center">
+                <button id="tab-id" onclick="switchTab('id')" class="flex-1 py-4 font-bold tab-active">공급사 ID 조회</button>
+                <button id="tab-no" onclick="switchTab('no')" class="flex-1 py-4 font-bold text-gray-400">상품번호 조회</button>
+            </div>
+            <div class="relative bg-white p-2 rounded-2xl shadow-sm border-2 border-gray-100 flex gap-2">
+                <input id="search-input" type="text" 
+                       placeholder="아이디를 입력하세요" 
+                       onkeyup="if(window.event.keyCode==13){instantSearch()}" 
+                       class="flex-1 outline-none p-3 font-bold bg-transparent text-lg">
+                <button onclick="instantSearch()" class="bg-dome text-white px-8 py-3 rounded-xl font-black shadow-lg hover:brightness-110 transition-all">조회하기</button>
+            </div>
+            <p id="input-hint" class="text-[12px] text-gray-500 mt-3 font-bold text-left px-2">※ 정확한 아이디 또는 상품번호를 입력해 주세요.</p>
+        </div>
+
+        <div id="editor-step" class="hidden">
+            <div class="flex justify-between items-center mb-8 bg-white p-6 rounded-3xl border shadow-sm">
+                <div>
+                    <h3 class="font-black text-2xl text-gray-900 tracking-tight">
+                        <span id="search-result-keyword" class="text-dome"></span> 상품 리스트
+                    </h3>
+                    <p class="text-xs text-gray-400 font-bold mt-1">※ 화면 크기에 따라 최적의 배열로 자동 나열됩니다 (모바일 2열 최적화)</p>
+                </div>
+            </div>
+            <div id="display-area" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6"></div>
+        </div>
+
+        <div id="showcase-view" class="hidden">
+            <div class="bg-white p-4 md:p-14 rounded-[3rem] shadow-2xl border flex flex-col items-center">
+                <div id="table-container" style="width: 100%; min-width: 320px;"></div>
+            </div>
+            <div class="mt-12 flex justify-center gap-4">
+                <button onclick="goBackToEditor()" class="border-2 border-gray-900 px-8 py-4 rounded-2xl font-bold hover:bg-gray-50">리스트로 돌아가기</button>
+                <button id="copy-btn" onclick="copyTableHtml()" class="bg-dome text-white px-10 py-4 rounded-2xl font-black shadow-xl hover:brightness-110">HTML 코드 복사하기</button>
+            </div>
+        </div>
+    </main>
+
+    <footer id="action-bar" class="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl bg-gray-900 text-white rounded-[2.5rem] p-5 shadow-2xl flex flex-col gap-4 hidden translate-y-60 transition-all duration-500 z-40 border border-white/10">
+        <div class="flex items-center justify-between px-3">
+            <div class="flex items-center gap-4">
+                <span id="selected-count" class="bg-dome text-white w-10 h-10 rounded-full flex items-center justify-center font-black text-xl shadow-lg">0</span>
+                <p class="font-bold text-sm text-gray-300">개의 상품이 선택되었습니다</p>
+            </div>
+            <button onclick="generateTableShowcase()" class="bg-dome text-white px-8 py-3.5 rounded-2xl font-black text-sm shadow-lg hover:brightness-110 transition-all">쇼케이스 생성</button>
+        </div>
+        <div id="selected-list" class="flex gap-3 overflow-x-auto px-2 pb-2 scroll-smooth"></div>
+    </footer>
+
+    <script>
+        let searchMode = 'id';
+        let selectedItems = [];
+
+        function switchTab(mode) {
+            searchMode = mode;
+            const input = document.getElementById('search-input');
+            const hint = document.getElementById('input-hint');
+            input.value = '';
+            document.getElementById('tab-id').className = mode === 'id' ? 'flex-1 py-4 font-bold tab-active' : 'flex-1 py-4 font-bold text-gray-400';
+            document.getElementById('tab-no').className = mode === 'no' ? 'flex-1 py-4 font-bold tab-active' : 'flex-1 py-4 font-bold text-gray-400';
+            input.placeholder = mode === 'id' ? "아이디를 입력하세요" : "상품번호를 입력하세요";
+            hint.innerText = mode === 'id' ? "※ 영문 소문자와 숫자만 입력 가능합니다." : "※ 숫자만 입력 가능합니다.";
+            input.focus();
+        }
+
+        const products_list = ["겨울 극세사 담요", "오리털 경량 조끼", "USB 손난로", "가습기 500ml", "기모 타이즈", "수면 양말 세트", "극세사 발매트", "욕실 슬리퍼", "무선 키보드", "블루투스 이어폰", "캠핑 폴딩박스", "대용량 텀블러", "에어프라이어 호일", "주방 세제", "다용도 수납함", "벽걸이 시계", "차량용 방향제", "스마트폰 거치대", "극세사 베개", "목마사지기", "휴대용 선풍기", "요가매트", "아령 세트", "단백질 쉐이크", "등산 스틱", "자전거 라이트", "골프공", "캠핑 의자", "피크닉 매트", "방수 가방", "기모 맨투맨", "조거 팬츠", "벙어리 장갑", "귀도리 모자", "털 슬리퍼", "가죽 벨트", "숄더 에코백", "캐릭터 백팩", "패딩 머플러", "가죽 장갑", "LED 스탠드", "멀티탭 5구", "전동 칫솔", "헤어 드라이기", "보풀 제거기", "디지털 체중계", "무선 청소기 필터", "공기청정기 필터", "전기 매트", "온열 안대", "프라이팬 세트", "스테인리스 냄비", "도마 3종", "조리도구 세트", "식기 건조대", "밀폐 용기", "와인 오프너", "고무 장갑", "수세미", "음식물 쓰레기통"];
+        const dummyData = Array.from({ length: 60 }, (_, i) => ({
+            no: (8800000 + i).toString(),
+            title: products_list[i],
+            price: (Math.floor(Math.random() * 40 + 5) * 500).toLocaleString(),
+            img: `https://picsum.photos/seed/${8800000+i}/400`
+        }));
+
+        function instantSearch() {
+            const input = document.getElementById('search-input');
+            let value = input.value.trim();
+            if (!value) { alert(`${searchMode === 'id' ? '아이디' : '상품번호'}를 입력해주세요.`); return; }
+
+            if (searchMode === 'id') {
+                const korCheck = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/;
+                if (korCheck.test(value)) { alert("아이디에는 한글을 입력할 수 없습니다."); return; }
+                value = value.toLowerCase();
+            } else {
+                const numCheck = /^[0-9]+$/;
+                if (!numCheck.test(value)) { alert("상품번호는 숫자만 입력 가능합니다."); return; }
+            }
+
+            document.getElementById('search-result-keyword').innerText = `'${value}'`;
+            document.getElementById('search-section').classList.add('hidden');
+            document.getElementById('editor-step').classList.remove('hidden');
+            document.getElementById('restart-btn').classList.remove('hidden');
+            renderResults();
+        }
+
+        function renderResults() {
+            document.getElementById('display-area').innerHTML = dummyData.map(p => {
+                const isSelected = selectedItems.find(item => item.no === p.no);
+                return `
+                <div class="relative bg-white border border-gray-200 rounded-2xl overflow-hidden cursor-pointer p-3 ${isSelected ? 'selected-card' : ''}" onclick="toggleItem('${p.no}', this)">
+                    <div class="check-badge"><i class="fa-solid fa-check text-xs"></i></div>
+                    <img src="${p.img}" class="w-full aspect-square object-cover rounded-xl mb-3" draggable="false" style="width:150px; height:150px; margin: 0 auto; display:block;">
+                    <p class="text-[10px] text-gray-400 font-bold">#${p.no}</p>
+                    <p class="text-[13px] font-bold text-gray-800 line-clamp-2 h-10 leading-tight">${p.title}</p>
+                    <p class="text-dome font-black text-sm">${p.price}원</p>
+                </div>`;
+            }).join('');
+        }
+
+        function toggleItem(no, el) {
+            const index = selectedItems.findIndex(i => i.no === no);
+            if(index > -1) { selectedItems.splice(index, 1); el.classList.remove('selected-card'); }
+            else { selectedItems.push(dummyData.find(p => p.no === no)); el.classList.add('selected-card'); }
+            updateBar();
+        }
+
+        function updateBar() {
+            const bar = document.getElementById('action-bar');
+            document.getElementById('selected-count').innerText = selectedItems.length;
+            if(selectedItems.length > 0) {
+                bar.classList.remove('hidden', 'translate-y-60');
+                document.getElementById('selected-list').innerHTML = selectedItems.map(item => `<div class="mini-thumb shadow-md"><img src="${item.img}"></div>`).join('');
+            } else { bar.classList.add('translate-y-60'); }
+        }
+
+        function generateTableShowcase() {
+            document.getElementById('editor-step').classList.add('hidden');
+            document.getElementById('action-bar').classList.add('hidden');
+            document.getElementById('showcase-view').classList.remove('hidden');
+            
+            let html = `<div style="width:100%;max-width:1100px;margin:0 auto;background:#ffffff;padding:20px 0;font-family:'Malgun Gothic',sans-serif;text-align:center;">
+                <h2 style="font-size:32px;color:#333;font-weight:800;margin-bottom:25px;">상품공급사 추천상품</h2>
+                <div style="font-size:0; display:flex; flex-wrap:wrap; justify-content:center; align-items:flex-start;">`; 
+
+            selectedItems.forEach(item => {
+                html += `
+                <div style="display:inline-block; vertical-align:top; width:46%; max-width:170px; min-width:140px; margin:8px; box-sizing:border-box; background:#ffffff; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.03); text-align:left;">
+                    <a href="https://domeggook.com/${item.no}" target="_blank" style="text-decoration:none; display:block;">
+                        <div style="width:100%; position:relative; padding-top:100%; background:#f3f4f6;">
+                            <img src="${item.img}" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;">
+                        </div>
+                        <div style="padding:12px;">
+                            <div style="font-size:10px; color:#999; margin-bottom:4px;">#${item.no}</div>
+                            <div style="font-size:13px; color:#333; height:36px; overflow:hidden; font-weight:bold; line-height:1.4; margin-bottom:10px;">${item.title}</div>
+                            <div style="font-size:17px; color:#0055ff; font-weight:800;">${item.price}<span style="font-size:12px; color:#333; font-weight:normal;">원</span></div>
+                        </div>
+                    </a>
+                </div>`;
+            });
+
+            html += `</div></div>`;
+            document.getElementById('table-container').innerHTML = html;
+        }
+
+        function goBackToEditor() { document.getElementById('showcase-view').classList.add('hidden'); document.getElementById('editor-step').classList.remove('hidden'); updateBar(); }
+        function copyTableHtml() { 
+            const html = document.getElementById('table-container').innerHTML; 
+            navigator.clipboard.writeText(html.trim()).then(() => { alert('코드가 복사되었습니다!'); }); 
+        }
+    </script>
+</body>
+</html>
