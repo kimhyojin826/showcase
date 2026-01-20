@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>꾹AI:쇼케이스 - 실전 API 연결 버전</title>
+    <title>꾹AI:쇼케이스 - 최종 API 연결 버전</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -12,16 +12,10 @@
         :root { --dome-green: #329946; }
         .bg-dome { background-color: var(--dome-green); }
         .text-dome { color: var(--dome-green); }
-        
         .selected-card { outline: 2px solid var(--dome-green) !important; outline-offset: -2px; background-color: #f0fdf4 !important; transform: translateY(-5px); transition: all 0.2s; z-index: 10; }
         .check-badge { display: none; position: absolute; top: 12px; right: 12px; z-index: 20; width: 28px; height: 28px; background: var(--dome-green); color: white; border-radius: 50%; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
         .selected-card .check-badge { display: flex; animation: scaleIn 0.2s ease-out; }
         @keyframes scaleIn { from { transform: scale(0); } to { transform: scale(1); } }
-
-        #selected-list::-webkit-scrollbar { height: 6px; }
-        #selected-list::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
-        .mini-thumb { width: 48px; height: 48px; flex-shrink: 0; border-radius: 10px; overflow: hidden; border: 2px solid rgba(255,255,255,0.2); }
-        .mini-thumb img { width: 100%; height: 100%; object-fit: cover; }
         .tab-active { border-bottom: 3px solid var(--dome-green); color: var(--dome-green); font-weight: 800; }
     </style>
 </head>
@@ -32,151 +26,120 @@
             <div class="w-10 h-10 bg-dome text-white rounded-xl flex items-center justify-center shadow-lg"><i class="fa-solid fa-wand-magic-sparkles text-xl"></i></div>
             <h1 class="text-xl font-black text-gray-900 tracking-tighter">꾹AI: <span class="text-dome">쇼케이스</span></h1>
         </div>
-        <button onclick="location.reload()" class="hidden bg-gray-100 text-gray-600 px-5 py-2 rounded-xl text-xs font-black hover:bg-gray-200 transition-colors" id="restart-btn">처음으로</button>
+        <button onclick="location.reload()" class="hidden bg-gray-100 text-gray-600 px-5 py-2 rounded-xl text-xs font-black" id="restart-btn">처음으로</button>
     </header>
 
     <main class="max-w-6xl mx-auto p-6 md:p-10">
-        <div id="search-section" class="max-w-2xl mx-auto mb-10">
-            <div class="flex border-b mb-6 text-sm text-center">
+        <div id="search-section" class="max-w-2xl mx-auto mb-10 text-center">
+            <div class="flex border-b mb-6 text-sm">
                 <button id="tab-id" onclick="switchTab('id')" class="flex-1 py-4 font-bold tab-active">공급사 ID 조회</button>
                 <button id="tab-no" onclick="switchTab('no')" class="flex-1 py-4 font-bold text-gray-400">상품번호 조회</button>
             </div>
             <div class="relative bg-white p-2 rounded-2xl shadow-sm border-2 border-gray-100 flex gap-2">
-                <input id="search-input" type="text" 
-                       placeholder="아이디를 입력하세요" 
-                       onkeyup="if(window.event.keyCode==13){instantSearch()}" 
-                       class="flex-1 outline-none p-3 font-bold bg-transparent text-lg">
-                <button id="search-btn" onclick="instantSearch()" class="bg-dome text-white px-8 py-3 rounded-xl font-black shadow-lg hover:brightness-110 transition-all">조회하기</button>
+                <input id="search-input" type="text" placeholder="아이디를 입력하세요" onkeyup="if(window.event.keyCode==13){instantSearch()}" class="flex-1 outline-none p-3 font-bold bg-transparent text-lg">
+                <button id="search-btn" onclick="instantSearch()" class="bg-dome text-white px-8 py-3 rounded-xl font-black shadow-lg">조회하기</button>
             </div>
-            <p id="input-hint" class="text-[12px] text-gray-500 mt-3 font-bold text-left px-2">※ 도매꾹에 등록된 정보를 실시간으로 조회합니다.</p>
         </div>
 
         <div id="editor-step" class="hidden">
             <div class="flex justify-between items-center mb-8 bg-white p-6 rounded-3xl border shadow-sm">
-                <div>
-                    <h3 class="font-black text-2xl text-gray-900 tracking-tight">
-                        <span id="search-result-keyword" class="text-dome"></span> 상품 리스트
-                    </h3>
-                    <p class="text-xs text-gray-400 font-bold mt-1">※ 화면 크기에 따라 최적의 배열로 자동 나열됩니다 (모바일 2열 최적화)</p>
-                </div>
+                <h3 class="font-black text-2xl text-gray-900 tracking-tight">
+                    '<span id="search-result-keyword" class="text-dome"></span>' 리스트
+                </h3>
             </div>
             <div id="display-area" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6"></div>
         </div>
 
         <div id="showcase-view" class="hidden">
             <div class="bg-white p-4 md:p-14 rounded-[3rem] shadow-2xl border flex flex-col items-center">
-                <div id="table-container" style="width: 100%; min-width: 320px;"></div>
+                <div id="table-container" style="width: 100%;"></div>
             </div>
             <div class="mt-12 flex justify-center gap-4">
-                <button onclick="goBackToEditor()" class="border-2 border-gray-900 px-8 py-4 rounded-2xl font-bold hover:bg-gray-50">리스트로 돌아가기</button>
-                <button id="copy-btn" onclick="copyTableHtml()" class="bg-dome text-white px-10 py-4 rounded-2xl font-black shadow-xl hover:brightness-110">HTML 코드 복사하기</button>
+                <button onclick="goBackToEditor()" class="border-2 border-gray-900 px-8 py-4 rounded-2xl font-bold">돌아가기</button>
+                <button onclick="copyTableHtml()" class="bg-dome text-white px-10 py-4 rounded-2xl font-black shadow-xl">HTML 코드 복사</button>
             </div>
         </div>
     </main>
 
-    <footer id="action-bar" class="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl bg-gray-900 text-white rounded-[2.5rem] p-5 shadow-2xl flex flex-col gap-4 hidden translate-y-60 transition-all duration-500 z-40 border border-white/10">
+    <footer id="action-bar" class="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl bg-gray-900 text-white rounded-[2.5rem] p-5 shadow-2xl flex flex-col gap-4 hidden translate-y-60 transition-all duration-500 z-40">
         <div class="flex items-center justify-between px-3">
             <div class="flex items-center gap-4">
-                <span id="selected-count" class="bg-dome text-white w-10 h-10 rounded-full flex items-center justify-center font-black text-xl shadow-lg">0</span>
-                <p class="font-bold text-sm text-gray-300">개의 상품이 선택되었습니다</p>
+                <span id="selected-count" class="bg-dome text-white w-10 h-10 rounded-full flex items-center justify-center font-black text-xl">0</span>
+                <p class="font-bold text-sm text-gray-300">개 선택됨</p>
             </div>
-            <button onclick="generateTableShowcase()" class="bg-dome text-white px-8 py-3.5 rounded-2xl font-black text-sm shadow-lg hover:brightness-110 transition-all">쇼케이스 생성</button>
+            <button onclick="generateTableShowcase()" class="bg-dome text-white px-8 py-3.5 rounded-2xl font-black text-sm">쇼케이스 생성</button>
         </div>
-        <div id="selected-list" class="flex gap-3 overflow-x-auto px-2 pb-2 scroll-smooth"></div>
+        <div id="selected-list" class="flex gap-3 overflow-x-auto px-2 pb-2"></div>
     </footer>
 
     <script>
-        // 발급받으신 인증키를 입력하세요
         const DOME_AID = "e43154deef698c88c994ca22cb34a457"; 
-
         let searchMode = 'id';
         let selectedItems = [];
-        let fetchedProducts = []; // 실시간 API 데이터를 저장할 배열
-        let isApiLoading = false; // 중복 호출 방지용
+        let fetchedProducts = [];
+        let isApiLoading = false;
 
         function switchTab(mode) {
             searchMode = mode;
             const input = document.getElementById('search-input');
-            const hint = document.getElementById('input-hint');
             input.value = '';
             document.getElementById('tab-id').className = mode === 'id' ? 'flex-1 py-4 font-bold tab-active' : 'flex-1 py-4 font-bold text-gray-400';
             document.getElementById('tab-no').className = mode === 'no' ? 'flex-1 py-4 font-bold tab-active' : 'flex-1 py-4 font-bold text-gray-400';
             input.placeholder = mode === 'id' ? "아이디를 입력하세요" : "상품번호를 입력하세요";
-            hint.innerText = mode === 'id' ? "※ 공급사 아이디를 입력하세요 (EUC-KR 문자 준수)." : "※ 상품번호 숫자만 입력하세요.";
-            input.focus();
         }
 
         async function instantSearch() {
             if (isApiLoading) return;
-
             const input = document.getElementById('search-input');
             const keyword = input.value.trim();
-            if (!keyword) { alert("입력값이 없습니다."); return; }
-
-            // [보안] EUC-KR에 없는 특수 한글/기호 차단 (도매꾹 가이드 준수)
-            const safePattern = /^[a-zA-Z0-9가-힣\s\-\_\[\]\(\)\,\.]+$/;
-            if (!safePattern.test(keyword)) {
-                alert("지원하지 않는 특수문자가 포함되어 있습니다.");
-                return;
-            }
+            if (!keyword) return;
 
             isApiLoading = true;
-            const btn = document.getElementById('search-btn');
-            if(btn) btn.innerText = "조회 중...";
+            document.getElementById('search-btn').innerText = "조회 중...";
 
             try {
-                // Postman에서 성공한 주소 체계 적용
-                let apiUrl = "";
+                // 사용자가 요청한 대로 ssl/api/ 뒤에 ?가 바로 붙는 구조
+                let targetUrl = "";
                 if (searchMode === 'id') {
-                    apiUrl = `https://domeggook.com/ssl/api/?ver=4.1&mode=getItemList&aid=${DOME_AID}&om=json&id=${keyword}&sz=100&market=dome`;
+                    targetUrl = `https://domeggook.com/ssl/api/?ver=4.1&mode=getItemList&aid=${DOME_AID}&om=json&id=${keyword}&sz=100`;
                 } else {
-                    apiUrl = `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemView&aid=${DOME_AID}&om=json&no=${keyword}`;
+                    targetUrl = `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemView&aid=${DOME_AID}&om=json&no=${keyword}`;
                 }
 
-                const response = await fetch(apiUrl);
-                
-                if (response.status === 429) {
-                    alert("도매꾹 API 호출 한도를 초과했습니다. 잠시 후 시도해 주세요.");
-                    return;
-                }
-
-                const data = await response.json();
+                // 브라우저 보안 정책(CORS) 우회를 위해 프록시 서버 사용
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+                const response = await fetch(proxyUrl);
+                const json = await response.json();
+                const data = JSON.parse(json.contents);
 
                 if (data.status !== "OK") {
-                    alert(`오류: ${data.message || "데이터를 가져올 수 없습니다."}`);
+                    alert(`오류: ${data.message || "결과가 없습니다."}`);
                     return;
                 }
 
-                // API 응답 데이터를 우리 포맷에 맞게 변환
                 if (searchMode === 'id') {
-                    if(!data.list || !data.list.item) { alert("등록된 상품이 없습니다."); return; }
+                    if (!data.list || !data.list.item) { alert("상품이 없습니다."); return; }
                     fetchedProducts = data.list.item.map(item => ({
-                        no: item.no,
-                        title: item.title,
-                        price: parseInt(item.price).toLocaleString(),
-                        img: (item.thumb || "").replace('http://', 'https://')
+                        no: item.no, title: item.title, price: parseInt(item.price).toLocaleString(), img: item.thumb.replace('http://', 'https://')
                     }));
                 } else {
                     fetchedProducts = [{
-                        no: data.basis.no,
-                        title: data.basis.title,
-                        price: parseInt(data.price.dome || data.price.supply).toLocaleString(),
-                        img: data.thumb.small.replace('http://', 'https://')
+                        no: data.basis.no, title: data.basis.title, price: parseInt(data.price.dome || data.price.supply).toLocaleString(), img: data.thumb.small.replace('http://', 'https://')
                     }];
                 }
 
-                document.getElementById('search-result-keyword').innerText = `'${keyword}'`;
+                document.getElementById('search-result-keyword').innerText = keyword;
                 document.getElementById('search-section').classList.add('hidden');
                 document.getElementById('editor-step').classList.remove('hidden');
                 document.getElementById('restart-btn').classList.remove('hidden');
                 renderResults();
 
             } catch (err) {
+                alert("통신 오류가 발생했습니다.");
                 console.error(err);
-                alert("통신 오류가 발생했습니다. 서비스 URL 등록을 확인해 주세요.");
             } finally {
                 isApiLoading = false;
-                if(btn) btn.innerText = "조회하기";
+                document.getElementById('search-btn').innerText = "조회하기";
             }
         }
 
@@ -184,9 +147,9 @@
             document.getElementById('display-area').innerHTML = fetchedProducts.map(p => {
                 const isSelected = selectedItems.find(item => item.no === p.no);
                 return `
-                <div class="relative bg-white border border-gray-200 rounded-2xl overflow-hidden cursor-pointer p-3 ${isSelected ? 'selected-card' : ''}" onclick="toggleItem('${p.no}', this)">
+                <div class="relative bg-white border border-gray-200 rounded-2xl p-3 cursor-pointer ${isSelected ? 'selected-card' : ''}" onclick="toggleItem('${p.no}', this)">
                     <div class="check-badge"><i class="fa-solid fa-check text-xs"></i></div>
-                    <img src="${p.img}" class="w-full aspect-square object-cover rounded-xl mb-3" draggable="false" style="width:150px; height:150px; margin: 0 auto; display:block;">
+                    <img src="${p.img}" class="w-full aspect-square object-cover rounded-xl mb-3" style="width:150px; height:150px; margin: 0 auto; display:block;">
                     <p class="text-[10px] text-gray-400 font-bold">#${p.no}</p>
                     <p class="text-[13px] font-bold text-gray-800 line-clamp-2 h-10 leading-tight">${p.title}</p>
                     <p class="text-dome font-black text-sm">${p.price}원</p>
@@ -196,13 +159,8 @@
 
         function toggleItem(no, el) {
             const index = selectedItems.findIndex(i => i.no === no);
-            if(index > -1) { 
-                selectedItems.splice(index, 1); 
-                el.classList.remove('selected-card'); 
-            } else { 
-                selectedItems.push(fetchedProducts.find(p => p.no === no)); 
-                el.classList.add('selected-card'); 
-            }
+            if(index > -1) { selectedItems.splice(index, 1); el.classList.remove('selected-card'); }
+            else { selectedItems.push(fetchedProducts.find(p => p.no === no)); el.classList.add('selected-card'); }
             updateBar();
         }
 
@@ -211,7 +169,7 @@
             document.getElementById('selected-count').innerText = selectedItems.length;
             if(selectedItems.length > 0) {
                 bar.classList.remove('hidden', 'translate-y-60');
-                document.getElementById('selected-list').innerHTML = selectedItems.map(item => `<div class="mini-thumb shadow-md"><img src="${item.img}"></div>`).join('');
+                document.getElementById('selected-list').innerHTML = selectedItems.map(item => `<div class="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-white/20"><img src="${item.img}" class="w-full h-full object-cover"></div>`).join('');
             } else { bar.classList.add('translate-y-60'); }
         }
 
@@ -220,35 +178,27 @@
             document.getElementById('action-bar').classList.add('hidden');
             document.getElementById('showcase-view').classList.remove('hidden');
             
-            let html = `<div style="width:100%;max-width:1100px;margin:0 auto;background:#ffffff;padding:20px 0;font-family:'Malgun Gothic',sans-serif;text-align:center;">
-                <h2 style="font-size:32px;color:#333;font-weight:800;margin-bottom:25px;">상품공급사 추천상품</h2>
-                <div style="font-size:0; display:flex; flex-wrap:wrap; justify-content:center; align-items:flex-start;">`; 
-
+            let html = `<div style="width:100%;max-width:1100px;margin:0 auto;background:#ffffff;padding:20px 0;text-align:center;font-family:'Malgun Gothic',sans-serif;">
+                <h2 style="font-size:28px;font-weight:800;margin-bottom:25px;">추천 상품 리스트</h2>
+                <div style="font-size:0; text-align:left;">`; 
             selectedItems.forEach(item => {
                 html += `
-                <div style="display:inline-block; vertical-align:top; width:46%; max-width:170px; min-width:140px; margin:8px; box-sizing:border-box; background:#ffffff; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.03); text-align:left;">
-                    <a href="https://domeggook.com/${item.no}" target="_blank" style="text-decoration:none; display:block;">
-                        <div style="width:100%; position:relative; padding-top:100%; background:#f3f4f6;">
-                            <img src="${item.img}" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;">
-                        </div>
-                        <div style="padding:12px;">
-                            <div style="font-size:10px; color:#999; margin-bottom:4px;">#${item.no}</div>
-                            <div style="font-size:13px; color:#333; height:36px; overflow:hidden; font-weight:bold; line-height:1.4; margin-bottom:10px;">${item.title}</div>
-                            <div style="font-size:17px; color:#329946; font-weight:800;">${item.price}<span style="font-size:12px; color:#333; font-weight:normal;">원</span></div>
+                <div style="display:inline-block; vertical-align:top; width:46%; max-width:170px; margin:8px; border:1px solid #eee; border-radius:12px; overflow:hidden;">
+                    <a href="https://domeggook.com/${item.no}" target="_blank" style="text-decoration:none;">
+                        <img src="${item.img}" style="width:100%; aspect-ratio:1/1; object-fit:cover;">
+                        <div style="padding:10px;">
+                            <div style="font-size:12px; color:#333; font-weight:bold; height:34px; overflow:hidden;">${item.title}</div>
+                            <div style="font-size:16px; color:#329946; font-weight:800; margin-top:8px;">${item.price}원</div>
                         </div>
                     </a>
                 </div>`;
             });
-
             html += `</div></div>`;
             document.getElementById('table-container').innerHTML = html;
         }
 
         function goBackToEditor() { document.getElementById('showcase-view').classList.add('hidden'); document.getElementById('editor-step').classList.remove('hidden'); updateBar(); }
-        function copyTableHtml() { 
-            const html = document.getElementById('table-container').innerHTML; 
-            navigator.clipboard.writeText(html.trim()).then(() => { alert('코드가 복사되었습니다!'); }); 
-        }
+        function copyTableHtml() { navigator.clipboard.writeText(document.getElementById('table-container').innerHTML.trim()).then(() => alert('복사되었습니다!')); }
     </script>
 </body>
 </html>
