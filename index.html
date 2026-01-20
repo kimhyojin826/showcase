@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>꾹AI:쇼케이스 - 긴급 복구 버전</title>
+    <title>꾹AI:쇼케이스 - 통신 해결 버전</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -26,24 +26,24 @@
             <div class="w-10 h-10 bg-dome text-white rounded-xl flex items-center justify-center shadow-lg"><i class="fa-solid fa-wand-magic-sparkles text-xl"></i></div>
             <h1 class="text-xl font-black text-gray-900 tracking-tighter">꾹AI: <span class="text-dome">쇼케이스</span></h1>
         </div>
-        <button onclick="location.reload()" class="bg-gray-100 text-gray-600 px-5 py-2 rounded-xl text-xs font-black" id="restart-btn">초기화</button>
+        <button onclick="location.reload()" class="bg-gray-100 text-gray-600 px-5 py-2 rounded-xl text-xs font-black" id="restart-btn">새로고침</button>
     </header>
 
     <main class="max-w-6xl mx-auto p-6 md:p-10 text-center">
         <div id="search-section" class="max-w-2xl mx-auto mb-10">
-            <div class="flex border-b mb-6 text-sm">
+            <div class="flex border-b mb-6 text-sm text-center">
                 <button id="tab-id" onclick="switchTab('id')" class="flex-1 py-4 font-bold tab-active">공급사 ID 조회</button>
                 <button id="tab-no" onclick="switchTab('no')" class="flex-1 py-4 font-bold text-gray-400">상품번호 조회</button>
             </div>
             <div class="relative bg-white p-2 rounded-2xl shadow-sm border-2 border-gray-100 flex gap-2">
-                <input id="search-input" type="text" placeholder="입력 후 엔터" onkeyup="if(window.event.keyCode==13){instantSearch()}" class="flex-1 outline-none p-3 font-bold bg-transparent text-lg">
-                <button id="search-btn" onclick="instantSearch()" class="bg-dome text-white px-8 py-3 rounded-xl font-black shadow-lg hover:brightness-110">조회하기</button>
+                <input id="search-input" type="text" placeholder="아이디를 입력하세요" onkeyup="if(window.event.keyCode==13){instantSearch()}" class="flex-1 outline-none p-3 font-bold bg-transparent text-lg">
+                <button id="search-btn" onclick="instantSearch()" class="bg-dome text-white px-8 py-3 rounded-xl font-black shadow-lg">조회하기</button>
             </div>
         </div>
 
         <div id="editor-step" class="hidden text-left">
             <div class="flex justify-between items-center mb-8 bg-white p-6 rounded-3xl border shadow-sm">
-                <h3 class="font-black text-2xl text-gray-900 tracking-tight">'<span id="search-result-keyword" class="text-dome"></span>' 상품 결과</h3>
+                <h3 class="font-black text-2xl text-gray-900 tracking-tight">'<span id="search-result-keyword" class="text-dome"></span>' 상품 리스트</h3>
             </div>
             <div id="display-area" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6"></div>
         </div>
@@ -53,8 +53,8 @@
                 <div id="table-container" style="width: 100%;"></div>
             </div>
             <div class="mt-12 flex justify-center gap-4">
-                <button onclick="goBackToEditor()" class="border-2 border-gray-900 px-8 py-4 rounded-2xl font-bold hover:bg-gray-50">돌아가기</button>
-                <button onclick="copyTableHtml()" class="bg-dome text-white px-10 py-4 rounded-2xl font-black shadow-xl">HTML 복사</button>
+                <button onclick="goBackToEditor()" class="border-2 border-gray-900 px-8 py-4 rounded-2xl font-bold">리스트로 돌아가기</button>
+                <button onclick="copyTableHtml()" class="bg-dome text-white px-10 py-4 rounded-2xl font-black shadow-xl">HTML 코드 복사</button>
             </div>
         </div>
     </main>
@@ -62,12 +62,12 @@
     <footer id="action-bar" class="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl bg-gray-900 text-white rounded-[2.5rem] p-5 shadow-2xl flex flex-col gap-4 hidden translate-y-60 transition-all duration-500 z-40">
         <div class="flex items-center justify-between px-3">
             <div class="flex items-center gap-4">
-                <span id="selected-count" class="bg-dome text-white w-10 h-10 rounded-full flex items-center justify-center font-black text-xl">0</span>
-                <p class="font-bold text-sm text-gray-300">개 선택됨</p>
+                <span id="selected-count" class="bg-dome text-white w-10 h-10 rounded-full flex items-center justify-center font-black text-xl shadow-lg">0</span>
+                <p class="font-bold text-sm text-gray-300">개의 상품 선택됨</p>
             </div>
             <button onclick="generateTableShowcase()" class="bg-dome text-white px-8 py-3.5 rounded-2xl font-black text-sm">쇼케이스 생성</button>
         </div>
-        <div id="selected-list" class="flex gap-3 overflow-x-auto px-2 pb-2"></div>
+        <div id="selected-list" class="flex gap-3 overflow-x-auto px-2 pb-2 scroll-smooth"></div>
     </footer>
 
     <script>
@@ -88,14 +88,15 @@
 
         async function instantSearch() {
             if (isApiLoading) return;
-            const keyword = document.getElementById('search-input').value.trim();
+            const input = document.getElementById('search-input');
+            const keyword = input.value.trim();
             if (!keyword) return;
 
             isApiLoading = true;
-            document.getElementById('search-btn').innerText = "연결 중...";
+            document.getElementById('search-btn').innerText = "통신 중...";
 
             try {
-                // 사용자가 말한 ssl/api/? 체제
+                // 사용자가 요청한 주소 형식 (itemList.php 제외)
                 let targetUrl = "";
                 if (searchMode === 'id') {
                     targetUrl = `https://domeggook.com/ssl/api/?ver=4.1&mode=getItemList&aid=${DOME_AID}&om=json&id=${keyword}&sz=100`;
@@ -103,27 +104,23 @@
                     targetUrl = `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemView&aid=${DOME_AID}&om=json&no=${keyword}`;
                 }
 
-                // [중요] 가장 범용적인 cors-anywhere 프록시 사용
-                const proxyUrl = "https://cors-anywhere.herokuapp.com/";
-                const response = await fetch(proxyUrl + targetUrl);
+                // [중요] 브라우저 차단을 피하기 위해 프록시 서버(allorigins)를 경유
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
                 
-                // 만약 프록시 서버 승인이 필요한 경우 알림
-                if (response.status === 403) {
-                    window.open("https://cors-anywhere.herokuapp.com/corsdemo", "_blank");
-                    alert("최초 1회 통신 승인이 필요합니다.\n열린 창에서 'Request temporary access' 버튼을 클릭한 후 다시 시도해 주세요!");
-                    return;
-                }
-
-                const data = await response.json();
+                const response = await fetch(proxyUrl);
+                const result = await response.json();
+                
+                // 프록시 응답 내부의 실제 데이터 파싱
+                const data = JSON.parse(result.contents);
 
                 if (data.status !== "OK") {
-                    alert(`도매꾹 알림: ${data.message || "결과 없음"}`);
+                    alert(`오류: ${data.message || "결과를 찾을 수 없습니다."}`);
                     return;
                 }
 
                 if (searchMode === 'id') {
-                    const items = data.list.item;
-                    fetchedProducts = (Array.isArray(items) ? items : [items]).map(item => ({
+                    if (!data.list || !data.list.item) { alert("등록된 상품이 없습니다."); return; }
+                    fetchedProducts = data.list.item.map(item => ({
                         no: item.no,
                         title: item.title,
                         price: parseInt(item.price).toLocaleString(),
@@ -145,7 +142,7 @@
 
             } catch (err) {
                 console.error(err);
-                alert("통신 환경을 확인해 주세요.");
+                alert("통신 오류가 발생했습니다. 브라우저 보안 설정을 확인해 주세요.");
             } finally {
                 isApiLoading = false;
                 document.getElementById('search-btn').innerText = "조회하기";
@@ -168,8 +165,13 @@
 
         function toggleItem(no, el) {
             const index = selectedItems.findIndex(i => i.no === no);
-            if(index > -1) { selectedItems.splice(index, 1); el.classList.remove('selected-card'); }
-            else { selectedItems.push(fetchedProducts.find(p => p.no === no)); el.classList.add('selected-card'); }
+            if(index > -1) { 
+                selectedItems.splice(index, 1); 
+                el.classList.remove('selected-card'); 
+            } else { 
+                selectedItems.push(fetchedProducts.find(p => p.no === no)); 
+                el.classList.add('selected-card'); 
+            }
             updateBar();
         }
 
@@ -178,7 +180,7 @@
             document.getElementById('selected-count').innerText = selectedItems.length;
             if(selectedItems.length > 0) {
                 bar.classList.remove('hidden', 'translate-y-60');
-                document.getElementById('selected-list').innerHTML = selectedItems.map(item => `<div class="w-12 h-12 rounded-lg overflow-hidden border border-white/20"><img src="${item.img}" class="w-full h-full object-cover"></div>`).join('');
+                document.getElementById('selected-list').innerHTML = selectedItems.map(item => `<div class="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-white/20"><img src="${item.img}" class="w-full h-full object-cover"></div>`).join('');
             } else { bar.classList.add('translate-y-60'); }
         }
 
@@ -188,16 +190,17 @@
             document.getElementById('showcase-view').classList.remove('hidden');
             
             let html = `<div style="width:100%;max-width:1100px;margin:0 auto;background:#ffffff;padding:20px 0;text-align:center;font-family:'Malgun Gothic',sans-serif;">
-                <h2 style="font-size:32px;color:#333;font-weight:800;margin-bottom:25px;">추천 상품 리스트</h2>
-                <div style="font-size:0; display:flex; flex-wrap:wrap; justify-content:center;">`; 
+                <h2 style="font-size:28px;font-weight:800;margin-bottom:25px;">추천 상품 리스트</h2>
+                <div style="font-size:0; text-align:left;">`; 
+
             selectedItems.forEach(item => {
                 html += `
-                <div style="display:inline-block; vertical-align:top; width:46%; max-width:170px; margin:8px; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; text-align:left;">
+                <div style="display:inline-block; vertical-align:top; width:46%; max-width:170px; margin:8px; border:1px solid #eee; border-radius:12px; overflow:hidden;">
                     <a href="https://domeggook.com/${item.no}" target="_blank" style="text-decoration:none;">
                         <img src="${item.img}" style="width:100%; aspect-ratio:1/1; object-fit:cover;">
-                        <div style="padding:12px;">
-                            <div style="font-size:13px; color:#333; font-weight:bold; height:36px; overflow:hidden;">${item.title}</div>
-                            <div style="font-size:17px; color:#329946; font-weight:800; margin-top:10px;">${item.price}원</div>
+                        <div style="padding:10px;">
+                            <div style="font-size:12px; color:#333; font-weight:bold; height:34px; overflow:hidden;">${item.title}</div>
+                            <div style="font-size:16px; color:#329946; font-weight:800; margin-top:8px;">${item.price}원</div>
                         </div>
                     </a>
                 </div>`;
@@ -207,7 +210,7 @@
         }
 
         function goBackToEditor() { document.getElementById('showcase-view').classList.add('hidden'); document.getElementById('editor-step').classList.remove('hidden'); updateBar(); }
-        function copyTableHtml() { navigator.clipboard.writeText(document.getElementById('table-container').innerHTML.trim()).then(() => alert('코드가 복사되었습니다!')); }
+        function copyTableHtml() { navigator.clipboard.writeText(document.getElementById('table-container').innerHTML.trim()).then(() => alert('복사되었습니다!')); }
     </script>
 </body>
 </html>
