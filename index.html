@@ -98,51 +98,62 @@
             document.getElementById('search-btn').innerText = "데이터 분석 중...";
 
             try {
+                // 💡 4.5 버전의 새로운 주소 체계를 적용합니다.
                 let targetUrl = "";
                 if (searchMode === 'id') {
-                    targetUrl = `https://domeggook.com/ssl/api/?ver=4.1&mode=getItemList&aid=${DOME_AID}&om=json&id=${keyword}&market=dome&sz=100`;
+                    targetUrl = `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemList&aid=${DOME_AID}&om=json&id=${keyword}&sz=100`;
                 } else {
-                    targetUrl = `https://domeggook.com/ssl/api/?ver=4.1&mode=getItemList&aid=${DOME_AID}&om=json&no=${keyword}`;
+                    targetUrl = `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemView&aid=${DOME_AID}&om=json&no=${keyword}`;
                 }
 
                 const response = await fetch(`${MY_PROXY_URL}?url=${encodeURIComponent(targetUrl)}`);
                 const rawText = await response.text();
                 const data = JSON.parse(rawText.trim()); 
 
-                console.log("Raw Data:", data);
+                console.log("Raw Response Data:", data);
 
-                // 어떤 모드든 리스트에 아이템이 있는지 먼저 확인합니다.
-                if (data.list && data.list.item) {
+                fetchedProducts = []; // 초기화
+
+                // 1. 상품번호 조회(getItemView) 성공 시 (로그에 나타난 구조)
+                if (data.basis && data.basis.no) {
+                    fetchedProducts = [{
+                        no: data.basis.no,
+                        title: data.basis.title,
+                        // 4.5 버전은 가격 정보가 data.price.dome 등에 있습니다.
+                        price: parseInt(data.price?.dome || data.price?.supply || 0).toLocaleString(),
+                        img: data.thumb?.small || data.thumb?.big
+                    }];
+                } 
+                // 2. 공급사 ID 조회(getItemList) 성공 시
+                else if (data.list && data.list.item) {
                     const items = Array.isArray(data.list.item) ? data.list.item : [data.list.item];
                     fetchedProducts = items.map(item => ({
                         no: item.no,
                         title: item.title,
                         price: parseInt(item.price || 0).toLocaleString(),
-                        img: item.thumb.replace('http://', 'https://')
+                        img: item.thumb
                     }));
-                } 
-                // 만약 단일 상품 뷰(basis)로 왔을 경우 처리
-                else if (data.basis && data.basis.no) {
-                    fetchedProducts = [{
-                        no: data.basis.no,
-                        title: data.basis.title,
-                        price: parseInt(data.price.dome || data.price.supply || 0).toLocaleString(),
-                        img: data.thumb.small.replace('http://', 'https://')
-                    }];
-                }
-                else {
-                    alert("검색 결과가 없습니다. 번호나 아이디를 다시 확인해주세요.");
-                    return;
                 }
 
-                document.getElementById('search-result-keyword').innerText = keyword;
-                document.getElementById('search-section').classList.add('hidden');
-                document.getElementById('editor-step').classList.remove('hidden');
-                renderResults();
+                // 결과 확인 로직
+                if (fetchedProducts.length > 0) {
+                    // 이미지 URL의 http를 https로 일괄 변경 (보안 이슈 방지)
+                    fetchedProducts = fetchedProducts.map(p => ({
+                        ...p,
+                        img: p.img ? p.img.replace('http://', 'https://') : ''
+                    }));
+
+                    document.getElementById('search-result-keyword').innerText = keyword;
+                    document.getElementById('search-section').classList.add('hidden');
+                    document.getElementById('editor-step').classList.remove('hidden');
+                    renderResults();
+                } else {
+                    alert("검색 결과가 없습니다. (API 응답 오류 또는 잘못된 번호)");
+                }
 
             } catch (err) {
-                console.error("Final Error:", err);
-                alert("데이터 처리 중 오류가 발생했습니다.");
+                console.error("Critical Error:", err);
+                alert("데이터 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
             } finally {
                 document.getElementById('search-btn').innerText = "조회하기";
             }
