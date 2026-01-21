@@ -40,7 +40,6 @@
                 <input id="search-input" type="text" placeholder="공급사 아이디를 입력하세요" onkeyup="if(window.event.keyCode==13){instantSearch()}" class="flex-1 outline-none p-3 font-bold bg-transparent text-lg">
                 <button id="search-btn" onclick="instantSearch()" class="bg-dome text-white px-8 py-3 rounded-xl font-black shadow-lg hover:brightness-105 transition-all">조회하기</button>
             </div>
-            <p class="text-gray-400 text-[11px] mt-4 font-medium italic">도매꾹(dome) 상품 전용 라이브 모드 활성화됨</p>
         </div>
 
         <div id="editor-step" class="hidden text-left">
@@ -96,34 +95,39 @@
             document.getElementById('search-btn').innerText = "데이터 분석 중...";
 
             try {
+                // 핵심: 사용자님이 설명하신 대로 mode와 파라미터를 정확히 구분합니다.
                 let targetUrl = (searchMode === 'id') 
                     ? `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemList&aid=${DOME_AID}&om=json&id=${keyword}&sz=100`
                     : `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemView&aid=${DOME_AID}&om=json&no=${keyword}`;
 
                 const response = await fetch(`${MY_PROXY_URL}?url=${encodeURIComponent(targetUrl)}`);
-                const rawText = await response.text();
-                const data = JSON.parse(rawText.trim()); 
+                const data = await response.json();
                 
                 fetchedProducts = [];
 
-                // 도매꾹 4.5 버전 상품상세 주머니(basis) 확인
-                if (data.basis && data.basis.no) {
-                    fetchedProducts = [{
-                        no: data.basis.no,
-                        title: data.basis.title,
-                        price: parseInt(data.price?.dome || data.price?.supply || 0).toLocaleString(),
-                        img: (data.thumb?.small || data.thumb?.big || "").replace('http://', 'https://')
-                    }];
-                } 
-                // 목록 조회 주머니(list) 확인
-                else if (data.list && data.list.item) {
-                    const items = Array.isArray(data.list.item) ? data.list.item : [data.list.item];
-                    fetchedProducts = items.map(item => ({
-                        no: item.no,
-                        title: item.title,
-                        price: parseInt(item.price || 0).toLocaleString(),
-                        img: (item.thumb || "").replace('http://', 'https://')
-                    }));
+                if (searchMode === 'no') {
+                    // [상품번호 검색 시] getItemView의 응답 처리
+                    const item = data.basis || data.item;
+                    if (item && (item.no || item.item_no)) {
+                        fetchedProducts.push({
+                            no: item.no || item.item_no,
+                            title: item.title,
+                            price: parseInt(data.price?.dome || item.price || 0).toLocaleString(),
+                            img: (data.thumb?.big || item.thumb || "").replace('http://', 'https://')
+                        });
+                    }
+                } else {
+                    // [공급사 ID 검색 시] getItemList의 응답 처리
+                    const list = data.list?.item;
+                    if (list) {
+                        const items = Array.isArray(list) ? list : [list];
+                        fetchedProducts = items.map(i => ({
+                            no: i.no,
+                            title: i.title,
+                            price: parseInt(i.price || 0).toLocaleString(),
+                            img: (i.thumb || "").replace('http://', 'https://')
+                        }));
+                    }
                 }
 
                 if (fetchedProducts.length > 0) {
@@ -132,10 +136,10 @@
                     document.getElementById('editor-step').classList.remove('hidden');
                     renderResults();
                 } else {
-                    alert("검색 결과가 없습니다. 번호를 다시 확인해주세요.");
+                    alert("검색 결과가 없습니다. 입력값과 탭 선택을 확인해주세요.");
                 }
             } catch (err) {
-                alert("데이터 분석 중 오류가 발생했습니다.");
+                alert("통신 오류가 발생했습니다. 구글 앱 스크립트 설정을 확인해주세요.");
             } finally {
                 document.getElementById('search-btn').innerText = "조회하기";
             }
@@ -181,11 +185,11 @@
             document.getElementById('action-bar').classList.add('hidden');
             document.getElementById('showcase-view').classList.remove('hidden');
             let html = `<div style="width:100%;max-width:1100px;margin:0 auto;background:#ffffff;padding:20px 0;text-align:center;">
-                <h2 style="font-size:28px;font-weight:800;margin-bottom:25px;text-align:center;">추천 상품 리스트</h2>
+                <h2 style="font-size:24px;font-weight:800;margin-bottom:25px;text-align:center;">추천 상품 리스트</h2>
                 <div style="font-size:0; text-align:left;">`; 
             selectedItems.forEach(item => {
                 html += `
-                <div style="display:inline-block; vertical-align:top; width:46%; max-width:170px; margin:8px; border:1px solid #eee; border-radius:12px; overflow:hidden;">
+                <div style="display:inline-block; vertical-align:top; width:46%; max-width:180px; margin:8px; border:1px solid #eee; border-radius:12px; overflow:hidden;">
                     <a href="https://domeggook.com/${item.no}" target="_blank" style="text-decoration:none;">
                         <img src="${item.img}" style="width:100%; aspect-ratio:1/1; object-fit:cover;">
                         <div style="padding:10px;">
