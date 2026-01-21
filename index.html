@@ -72,142 +72,149 @@
         <div id="selected-list" class="flex gap-3 overflow-x-auto px-2 pb-2 scroll-smooth"></div>
     </footer>
 
-   <script>
-    const DOME_AID = "e43154deef698c88c994ca22cb34a457"; 
-    let searchMode = 'id';
-    let selectedItems = [];
-    let fetchedProducts = [];
+    <script>
+        const DOME_AID = "e43154deef698c88c994ca22cb34a457"; 
+        let searchMode = 'id';
+        let selectedItems = [];
+        let fetchedProducts = [];
 
-    // ⚠️ 이미 확인하신 그 URL입니다.
-    const MY_PROXY_URL = "https://script.google.com/macros/s/AKfycby2Fz12-xepyxJKAWLQfy_MWxvTLsUNC_R7yDwdu8NTcyCrrO0wOOz_NyyebqKLvifT3Q/exec"; 
+        // ⚠️ 사용자님의 구글 앱 스크립트 URL
+        const MY_PROXY_URL = "https://script.google.com/macros/s/AKfycby2Fz12-xepyxJKAWLQfy_MWxvTLsUNC_R7yDwdu8NTcyCrrO0wOOz_NyyebqKLvifT3Q/exec"; 
 
-    function switchTab(mode) {
-        searchMode = mode;
-        const input = document.getElementById('search-input');
-        input.value = '';
-        document.getElementById('tab-id').className = mode === 'id' ? 'flex-1 py-4 font-bold tab-active' : 'flex-1 py-4 font-bold text-gray-400';
-        document.getElementById('tab-no').className = mode === 'no' ? 'flex-1 py-4 font-bold tab-active' : 'flex-1 py-4 font-bold text-gray-400';
-        input.placeholder = mode === 'id' ? "공급사 아이디를 입력하세요" : "상품번호를 입력하세요";
-    }
-
-    async function instantSearch() {
-        const input = document.getElementById('search-input');
-        const keyword = input.value.trim();
-        if (!keyword) { alert("입력값이 없습니다."); return; }
-
-        document.getElementById('search-btn').innerText = "통신 중...";
-
-        try {
-            let targetUrl = "";
-            if (searchMode === 'id') {
-                targetUrl = `https://domeggook.com/ssl/api/?ver=4.1&mode=getItemList&aid=${DOME_AID}&om=json&id=${keyword}&market=dome&sz=100`;
-            } else {
-                targetUrl = `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemView&aid=${DOME_AID}&om=json&no=${keyword}`;
-            }
-
-            // ⚡ 구글 프록시 전용 통신 방식
-            const response = await fetch(`${MY_PROXY_URL}?url=${encodeURIComponent(targetUrl)}`);
-            const data = await response.json(); // 👈 로그 확인 결과, 바로 json()으로 받는 게 정답입니다!
-
-            if (data.status !== "OK") {
-                alert(`실패: ${data.message || "결과 없음"}`);
-                return;
-            }
-
-            // 데이터 가공 로직 (기존과 동일)
-            if (searchMode === 'id') {
-                if (!data.list || !data.list.item) { alert("상품을 찾을 수 없습니다."); return; }
-                const items = Array.isArray(data.list.item) ? data.list.item : [data.list.item];
-                fetchedProducts = items.map(item => ({
-                    no: item.no,
-                    title: item.title,
-                    price: parseInt(item.price).toLocaleString(),
-                    img: item.thumb.replace('http://', 'https://')
-                }));
-            } else {
-                fetchedProducts = [{
-                    no: data.basis.no,
-                    title: data.basis.title,
-                    price: parseInt(data.price.dome || data.price.supply).toLocaleString(),
-                    img: data.thumb.small.replace('http://', 'https://')
-                }];
-            }
-
-            document.getElementById('search-result-keyword').innerText = keyword;
-            document.getElementById('search-section').classList.add('hidden');
-            document.getElementById('editor-step').classList.remove('hidden');
-            renderResults();
-
-        } catch (err) {
-            console.error("Error Detail:", err);
-            alert("데이터를 가져오지 못했습니다. 구글 앱 스크립트 배포 상태를 확인해주세요.");
-        } finally {
-            document.getElementById('search-btn').innerText = "조회하기";
+        function switchTab(mode) {
+            searchMode = mode;
+            const input = document.getElementById('search-input');
+            input.value = '';
+            document.getElementById('tab-id').className = mode === 'id' ? 'flex-1 py-4 font-bold tab-active' : 'flex-1 py-4 font-bold text-gray-400';
+            document.getElementById('tab-no').className = mode === 'no' ? 'flex-1 py-4 font-bold tab-active' : 'flex-1 py-4 font-bold text-gray-400';
+            input.placeholder = mode === 'id' ? "공급사 아이디를 입력하세요" : "상품번호를 입력하세요";
         }
-    }
 
-    // --- 이하 렌더링 및 유틸리티 함수 (기존과 동일) ---
-    function renderResults() {
-        document.getElementById('display-area').innerHTML = fetchedProducts.map(p => {
-            const isSelected = selectedItems.find(item => item.no === p.no);
-            return `
-            <div class="relative bg-white border border-gray-200 rounded-2xl p-3 cursor-pointer ${isSelected ? 'selected-card' : ''}" onclick="toggleItem('${p.no}', this)">
-                <div class="check-badge"><i class="fa-solid fa-check text-xs"></i></div>
-                <img src="${p.img}" class="w-[150px] h-[150px] object-cover rounded-xl mb-3 mx-auto block">
-                <p class="text-[10px] text-gray-400 font-bold">#${p.no}</p>
-                <p class="text-[13px] font-bold text-gray-800 line-clamp-2 h-10 leading-tight">${p.title}</p>
-                <p class="text-dome font-black text-sm">${p.price}원</p>
-            </div>`;
-        }).join('');
-    }
+        async function instantSearch() {
+            const input = document.getElementById('search-input');
+            const keyword = input.value.trim();
+            if (!keyword) { alert("입력값이 없습니다."); return; }
 
-    function toggleItem(no, el) {
-        const index = selectedItems.findIndex(i => i.no === no);
-        if(index > -1) { 
-            selectedItems.splice(index, 1); 
-            el.classList.remove('selected-card'); 
-        } else { 
-            selectedItems.push(fetchedProducts.find(p => p.no === no)); 
-            el.classList.add('selected-card'); 
+            document.getElementById('search-btn').innerText = "데이터 분석 중...";
+
+            try {
+                let targetUrl = "";
+                if (searchMode === 'id') {
+                    targetUrl = `https://domeggook.com/ssl/api/?ver=4.1&mode=getItemList&aid=${DOME_AID}&om=json&id=${keyword}&market=dome&sz=100`;
+                } else {
+                    targetUrl = `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemView&aid=${DOME_AID}&om=json&no=${keyword}`;
+                }
+
+                const response = await fetch(`${MY_PROXY_URL}?url=${encodeURIComponent(targetUrl)}`);
+                const data = await response.json();
+
+                // 🔍 디버깅: 데이터 구조 파악 (콘솔에서 확인 가능)
+                console.log("DOME Data:", data);
+
+                // 도매꾹 데이터 구조에 따른 분기 처리
+                if (searchMode === 'no') {
+                    // [상품번호 조회 모드]
+                    if (data.basis && data.basis.no) {
+                        fetchedProducts = [{
+                            no: data.basis.no,
+                            title: data.basis.title,
+                            price: parseInt(data.price.dome || data.price.supply || 0).toLocaleString(),
+                            img: data.thumb.small.replace('http://', 'https://')
+                        }];
+                    } else {
+                        alert("해당 상품번호의 정보를 찾을 수 없습니다.");
+                        return;
+                    }
+                } else {
+                    // [공급사 ID 조회 모드]
+                    if (data.list && data.list.item) {
+                        const items = Array.isArray(data.list.item) ? data.list.item : [data.list.item];
+                        fetchedProducts = items.map(item => ({
+                            no: item.no,
+                            title: item.title,
+                            price: parseInt(item.price || 0).toLocaleString(),
+                            img: item.thumb.replace('http://', 'https://')
+                        }));
+                    } else {
+                        alert("공급사의 상품 리스트를 불러올 수 없습니다.");
+                        return;
+                    }
+                }
+
+                document.getElementById('search-result-keyword').innerText = keyword;
+                document.getElementById('search-section').classList.add('hidden');
+                document.getElementById('editor-step').classList.remove('hidden');
+                renderResults();
+
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                alert("통신 에러가 발생했습니다. 구글 앱 스크립트 코드가 이전 버전인지 확인해주세요.");
+            } finally {
+                document.getElementById('search-btn').innerText = "조회하기";
+            }
         }
-        updateBar();
-    }
 
-    function updateBar() {
-        const bar = document.getElementById('action-bar');
-        document.getElementById('selected-count').innerText = selectedItems.length;
-        if(selectedItems.length > 0) {
-            bar.classList.remove('hidden', 'translate-y-60');
-            document.getElementById('selected-list').innerHTML = selectedItems.map(item => `<div class="w-12 h-12 rounded-lg overflow-hidden border border-white/20 flex-shrink-0"><img src="${item.img}" class="w-full h-full object-cover"></div>`).join('');
-        } else { bar.classList.add('translate-y-60'); }
-    }
+        function renderResults() {
+            document.getElementById('display-area').innerHTML = fetchedProducts.map(p => {
+                const isSelected = selectedItems.find(item => item.no === p.no);
+                return `
+                <div class="relative bg-white border border-gray-200 rounded-2xl p-3 cursor-pointer ${isSelected ? 'selected-card' : ''}" onclick="toggleItem('${p.no}', this)">
+                    <div class="check-badge"><i class="fa-solid fa-check text-xs"></i></div>
+                    <img src="${p.img}" class="w-[150px] h-[150px] object-cover rounded-xl mb-3 mx-auto block">
+                    <p class="text-[10px] text-gray-400 font-bold">#${p.no}</p>
+                    <p class="text-[13px] font-bold text-gray-800 line-clamp-2 h-10 leading-tight">${p.title}</p>
+                    <p class="text-dome font-black text-sm">${p.price}원</p>
+                </div>`;
+            }).join('');
+        }
 
-    function generateTableShowcase() {
-        document.getElementById('editor-step').classList.add('hidden');
-        document.getElementById('action-bar').classList.add('hidden');
-        document.getElementById('showcase-view').classList.remove('hidden');
-        
-        let html = `<div style="width:100%;max-width:1100px;margin:0 auto;background:#ffffff;padding:20px 0;text-align:center;">
-            <h2 style="font-size:28px;font-weight:800;margin-bottom:25px;text-align:center;">추천 상품 리스트</h2>
-            <div style="font-size:0; text-align:left;">`; 
-        selectedItems.forEach(item => {
-            html += `
-            <div style="display:inline-block; vertical-align:top; width:46%; max-width:170px; margin:8px; border:1px solid #eee; border-radius:12px; overflow:hidden;">
-                <a href="https://domeggook.com/${item.no}" target="_blank" style="text-decoration:none;">
-                    <img src="${item.img}" style="width:100%; aspect-ratio:1/1; object-fit:cover;">
-                    <div style="padding:10px;">
-                        <div style="font-size:12px; color:#333; font-weight:bold; height:34px; overflow:hidden;">${item.title}</div>
-                        <div style="font-size:16px; color:#329946; font-weight:800; margin-top:8px;">${item.price}원</div>
-                    </div>
-                </a>
-            </div>`;
-        });
-        html += `</div></div>`;
-        document.getElementById('table-container').innerHTML = html;
-    }
+        function toggleItem(no, el) {
+            const index = selectedItems.findIndex(i => i.no === no);
+            if(index > -1) { 
+                selectedItems.splice(index, 1); 
+                el.classList.remove('selected-card'); 
+            } else { 
+                selectedItems.push(fetchedProducts.find(p => p.no === no)); 
+                el.classList.add('selected-card'); 
+            }
+            updateBar();
+        }
 
-    function goBackToEditor() { document.getElementById('showcase-view').classList.add('hidden'); document.getElementById('editor-step').classList.remove('hidden'); updateBar(); }
-    function copyTableHtml() { navigator.clipboard.writeText(document.getElementById('table-container').innerHTML.trim()).then(() => alert('복사되었습니다!')); }
-</script>
+        function updateBar() {
+            const bar = document.getElementById('action-bar');
+            document.getElementById('selected-count').innerText = selectedItems.length;
+            if(selectedItems.length > 0) {
+                bar.classList.remove('hidden', 'translate-y-60');
+                document.getElementById('selected-list').innerHTML = selectedItems.map(item => `<div class="w-12 h-12 rounded-lg overflow-hidden border border-white/20 flex-shrink-0"><img src="${item.img}" class="w-full h-full object-cover"></div>`).join('');
+            } else { bar.classList.add('translate-y-60'); }
+        }
+
+        function generateTableShowcase() {
+            document.getElementById('editor-step').classList.add('hidden');
+            document.getElementById('action-bar').classList.add('hidden');
+            document.getElementById('showcase-view').classList.remove('hidden');
+            
+            let html = `<div style="width:100%;max-width:1100px;margin:0 auto;background:#ffffff;padding:20px 0;text-align:center;">
+                <h2 style="font-size:28px;font-weight:800;margin-bottom:25px;text-align:center;">추천 상품 리스트</h2>
+                <div style="font-size:0; text-align:left;">`; 
+            selectedItems.forEach(item => {
+                html += `
+                <div style="display:inline-block; vertical-align:top; width:46%; max-width:170px; margin:8px; border:1px solid #eee; border-radius:12px; overflow:hidden;">
+                    <a href="https://domeggook.com/${item.no}" target="_blank" style="text-decoration:none;">
+                        <img src="${item.img}" style="width:100%; aspect-ratio:1/1; object-fit:cover;">
+                        <div style="padding:10px;">
+                            <div style="font-size:12px; color:#333; font-weight:bold; height:34px; overflow:hidden;">${item.title}</div>
+                            <div style="font-size:16px; color:#329946; font-weight:800; margin-top:8px;">${item.price}원</div>
+                        </div>
+                    </a>
+                </div>`;
+            });
+            html += `</div></div>`;
+            document.getElementById('table-container').innerHTML = html;
+        }
+
+        function goBackToEditor() { document.getElementById('showcase-view').classList.add('hidden'); document.getElementById('editor-step').classList.remove('hidden'); updateBar(); }
+        function copyTableHtml() { navigator.clipboard.writeText(document.getElementById('table-container').innerHTML.trim()).then(() => alert('복사되었습니다!')); }
+    </script>
 </body>
 </html>
