@@ -90,43 +90,28 @@
             input.placeholder = mode === 'id' ? "공급사 아이디를 입력하세요" : "상품번호를 입력하세요";
         }
 
-        async function instantSearch() {
-        const input = document.getElementById('search-input');
-        const keyword = input.value.trim();
-        if (!keyword) { alert("입력값이 없습니다."); return; }
+       async function instantSearch() {
+            const input = document.getElementById('search-input');
+            const keyword = input.value.trim();
+            if (!keyword) { alert("입력값이 없습니다."); return; }
 
-        document.getElementById('search-btn').innerText = "데이터 분석 중...";
+            document.getElementById('search-btn').innerText = "데이터 분석 중...";
 
-        try {
-            let targetUrl = "";
-            if (searchMode === 'id') {
-                targetUrl = `https://domeggook.com/ssl/api/?ver=4.1&mode=getItemList&aid=${DOME_AID}&om=json&id=${keyword}&market=dome&sz=100`;
-            } else {
-                targetUrl = `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemView&aid=${DOME_AID}&om=json&no=${keyword}`;
-            }
-
-            const response = await fetch(`${MY_PROXY_URL}?url=${encodeURIComponent(targetUrl)}`);
-            
-            // 💡 이 부분이 핵심입니다! 
-            // 텍스트로 먼저 받아서 앞뒤 공백을 제거(.trim())한 후 JSON으로 변환합니다.
-            const rawText = await response.text();
-            const data = JSON.parse(rawText.trim()); 
-
-            console.log("Cleaned Data:", data);
-
-            if (searchMode === 'no') {
-                if (data.basis && data.basis.no) {
-                    fetchedProducts = [{
-                        no: data.basis.no,
-                        title: data.basis.title,
-                        price: parseInt(data.price.dome || data.price.supply || 0).toLocaleString(),
-                        img: data.thumb.small.replace('http://', 'https://')
-                    }];
+            try {
+                let targetUrl = "";
+                if (searchMode === 'id') {
+                    targetUrl = `https://domeggook.com/ssl/api/?ver=4.1&mode=getItemList&aid=${DOME_AID}&om=json&id=${keyword}&market=dome&sz=100`;
                 } else {
-                    alert("해당 상품번호의 정보를 찾을 수 없습니다.");
-                    return;
+                    targetUrl = `https://domeggook.com/ssl/api/?ver=4.1&mode=getItemList&aid=${DOME_AID}&om=json&no=${keyword}`;
                 }
-            } else {
+
+                const response = await fetch(`${MY_PROXY_URL}?url=${encodeURIComponent(targetUrl)}`);
+                const rawText = await response.text();
+                const data = JSON.parse(rawText.trim()); 
+
+                console.log("Raw Data:", data);
+
+                // 어떤 모드든 리스트에 아이템이 있는지 먼저 확인합니다.
                 if (data.list && data.list.item) {
                     const items = Array.isArray(data.list.item) ? data.list.item : [data.list.item];
                     fetchedProducts = items.map(item => ({
@@ -135,24 +120,33 @@
                         price: parseInt(item.price || 0).toLocaleString(),
                         img: item.thumb.replace('http://', 'https://')
                     }));
-                } else {
-                    alert("공급사의 상품 리스트를 불러올 수 없습니다.");
+                } 
+                // 만약 단일 상품 뷰(basis)로 왔을 경우 처리
+                else if (data.basis && data.basis.no) {
+                    fetchedProducts = [{
+                        no: data.basis.no,
+                        title: data.basis.title,
+                        price: parseInt(data.price.dome || data.price.supply || 0).toLocaleString(),
+                        img: data.thumb.small.replace('http://', 'https://')
+                    }];
+                }
+                else {
+                    alert("검색 결과가 없습니다. 번호나 아이디를 다시 확인해주세요.");
                     return;
                 }
+
+                document.getElementById('search-result-keyword').innerText = keyword;
+                document.getElementById('search-section').classList.add('hidden');
+                document.getElementById('editor-step').classList.remove('hidden');
+                renderResults();
+
+            } catch (err) {
+                console.error("Final Error:", err);
+                alert("데이터 처리 중 오류가 발생했습니다.");
+            } finally {
+                document.getElementById('search-btn').innerText = "조회하기";
             }
-
-            document.getElementById('search-result-keyword').innerText = keyword;
-            document.getElementById('search-section').classList.add('hidden');
-            document.getElementById('editor-step').classList.remove('hidden');
-            renderResults();
-
-        } catch (err) {
-            console.error("Parse Error:", err);
-            alert("데이터 해석에 실패했습니다. (도매꾹 응답 형식 오류)");
-        } finally {
-            document.getElementById('search-btn').innerText = "조회하기";
         }
-    }
         function renderResults() {
             document.getElementById('display-area').innerHTML = fetchedProducts.map(p => {
                 const isSelected = selectedItems.find(item => item.no === p.no);
