@@ -74,12 +74,11 @@
 
     <script>
         const DOME_AID = "e43154deef698c88c994ca22cb34a457"; 
+        const MY_PROXY_URL = "https://script.google.com/macros/s/AKfycby2Fz12-xepyxJKAWLQfy_MWxvTLsUNC_R7yDwdu8NTcyCrrO0wOOz_NyyebqKLvifT3Q/exec"; 
+        
         let searchMode = 'id';
         let selectedItems = [];
         let fetchedProducts = [];
-
-        // ⚠️ 사용자님의 구글 앱 스크립트 URL
-        const MY_PROXY_URL = "https://script.google.com/macros/s/AKfycby2Fz12-xepyxJKAWLQfy_MWxvTLsUNC_R7yDwdu8NTcyCrrO0wOOz_NyyebqKLvifT3Q/exec"; 
 
         function switchTab(mode) {
             searchMode = mode;
@@ -90,74 +89,58 @@
             input.placeholder = mode === 'id' ? "공급사 아이디를 입력하세요" : "상품번호를 입력하세요";
         }
 
-       async function instantSearch() {
+        async function instantSearch() {
             const input = document.getElementById('search-input');
             const keyword = input.value.trim();
             if (!keyword) { alert("입력값이 없습니다."); return; }
-
             document.getElementById('search-btn').innerText = "데이터 분석 중...";
 
             try {
-                // 💡 4.5 버전의 새로운 주소 체계를 적용합니다.
-                let targetUrl = "";
-                if (searchMode === 'id') {
-                    targetUrl = `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemList&aid=${DOME_AID}&om=json&id=${keyword}&sz=100`;
-                } else {
-                    targetUrl = `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemView&aid=${DOME_AID}&om=json&no=${keyword}`;
-                }
+                let targetUrl = (searchMode === 'id') 
+                    ? `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemList&aid=${DOME_AID}&om=json&id=${keyword}&sz=100`
+                    : `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemView&aid=${DOME_AID}&om=json&no=${keyword}`;
 
                 const response = await fetch(`${MY_PROXY_URL}?url=${encodeURIComponent(targetUrl)}`);
                 const rawText = await response.text();
                 const data = JSON.parse(rawText.trim()); 
+                
+                fetchedProducts = [];
 
-                console.log("Raw Response Data:", data);
-
-                fetchedProducts = []; // 초기화
-
-                // 1. 상품번호 조회(getItemView) 성공 시 (로그에 나타난 구조)
+                // 도매꾹 4.5 버전 상품상세 주머니(basis) 확인
                 if (data.basis && data.basis.no) {
                     fetchedProducts = [{
                         no: data.basis.no,
                         title: data.basis.title,
-                        // 4.5 버전은 가격 정보가 data.price.dome 등에 있습니다.
                         price: parseInt(data.price?.dome || data.price?.supply || 0).toLocaleString(),
-                        img: data.thumb?.small || data.thumb?.big
+                        img: (data.thumb?.small || data.thumb?.big || "").replace('http://', 'https://')
                     }];
                 } 
-                // 2. 공급사 ID 조회(getItemList) 성공 시
+                // 목록 조회 주머니(list) 확인
                 else if (data.list && data.list.item) {
                     const items = Array.isArray(data.list.item) ? data.list.item : [data.list.item];
                     fetchedProducts = items.map(item => ({
                         no: item.no,
                         title: item.title,
                         price: parseInt(item.price || 0).toLocaleString(),
-                        img: item.thumb
+                        img: (item.thumb || "").replace('http://', 'https://')
                     }));
                 }
 
-                // 결과 확인 로직
                 if (fetchedProducts.length > 0) {
-                    // 이미지 URL의 http를 https로 일괄 변경 (보안 이슈 방지)
-                    fetchedProducts = fetchedProducts.map(p => ({
-                        ...p,
-                        img: p.img ? p.img.replace('http://', 'https://') : ''
-                    }));
-
                     document.getElementById('search-result-keyword').innerText = keyword;
                     document.getElementById('search-section').classList.add('hidden');
                     document.getElementById('editor-step').classList.remove('hidden');
                     renderResults();
                 } else {
-                    alert("검색 결과가 없습니다. (API 응답 오류 또는 잘못된 번호)");
+                    alert("검색 결과가 없습니다. 번호를 다시 확인해주세요.");
                 }
-
             } catch (err) {
-                console.error("Critical Error:", err);
-                alert("데이터 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+                alert("데이터 분석 중 오류가 발생했습니다.");
             } finally {
                 document.getElementById('search-btn').innerText = "조회하기";
             }
         }
+
         function renderResults() {
             document.getElementById('display-area').innerHTML = fetchedProducts.map(p => {
                 const isSelected = selectedItems.find(item => item.no === p.no);
@@ -197,7 +180,6 @@
             document.getElementById('editor-step').classList.add('hidden');
             document.getElementById('action-bar').classList.add('hidden');
             document.getElementById('showcase-view').classList.remove('hidden');
-            
             let html = `<div style="width:100%;max-width:1100px;margin:0 auto;background:#ffffff;padding:20px 0;text-align:center;">
                 <h2 style="font-size:28px;font-weight:800;margin-bottom:25px;text-align:center;">추천 상품 리스트</h2>
                 <div style="font-size:0; text-align:left;">`; 
