@@ -78,7 +78,7 @@
         let selectedItems = [];
         let fetchedProducts = [];
 
-        // ⚠️ 66번 줄: 여기에 구글 앱 스크립트 배포 URL을 붙여넣으세요
+        // ⚠️ 66번 줄: 여기에 주소를 정확히 넣어주세요
         const MY_PROXY_URL = "https://script.google.com/macros/s/AKfycbw3eaQUNVEUKmhynrXGRImm2_BzJ0oZ4wpDuyS1Ars-bwmpLo3IQvT13JNbBt1pxxxLgg/exec"; 
 
         function switchTab(mode) {
@@ -105,7 +105,7 @@
                     targetUrl = `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemView&aid=${DOME_AID}&om=json&no=${keyword}`;
                 }
 
-                // [수정된 부분] AllOrigins 프록시를 제거하고 구글 프록시를 사용하도록 변경
+                // [수정 핵심] 구글 프록시 응답을 직접 사용 (contents 거치지 않음)
                 const response = await fetch(`${MY_PROXY_URL}?url=${encodeURIComponent(targetUrl)}`);
                 const data = await response.json();
 
@@ -139,7 +139,7 @@
 
             } catch (err) {
                 console.error(err);
-                alert("통신 에러가 발생했습니다. 구글 앱 스크립트 배포 설정을 확인해주세요.");
+                alert("통신 중 에러가 발생했습니다.");
             } finally {
                 document.getElementById('search-btn').innerText = "조회하기";
             }
