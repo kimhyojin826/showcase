@@ -87,15 +87,14 @@
             document.getElementById('tab-no').className = mode === 'no' ? 'flex-1 py-4 font-bold tab-active' : 'flex-1 py-4 font-bold text-gray-400';
             input.placeholder = mode === 'id' ? "공급사 아이디를 입력하세요" : "상품번호를 입력하세요";
         }
-
-        async function instantSearch() {
+async function instantSearch() {
             const input = document.getElementById('search-input');
             const keyword = input.value.trim();
             if (!keyword) { alert("입력값이 없습니다."); return; }
             document.getElementById('search-btn').innerText = "데이터 분석 중...";
 
             try {
-                // 핵심: 사용자님이 설명하신 대로 mode와 파라미터를 정확히 구분합니다.
+                // 1. 사용자님의 로직대로 모드에 따라 URL을 생성합니다.
                 let targetUrl = (searchMode === 'id') 
                     ? `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemList&aid=${DOME_AID}&om=json&id=${keyword}&sz=100`
                     : `https://domeggook.com/ssl/api/?ver=4.5&mode=getItemView&aid=${DOME_AID}&om=json&no=${keyword}`;
@@ -105,19 +104,24 @@
                 
                 fetchedProducts = [];
 
+                // 2. [수정 포인트] 데이터를 가져올 때 '주머니'를 더 꼼꼼하게 뒤집니다.
                 if (searchMode === 'no') {
-                    // [상품번호 검색 시] getItemView의 응답 처리
-                    const item = data.basis || data.item;
-                    if (item && (item.no || item.item_no)) {
+                    // 상품번호 검색 시: basis, item, 혹은 데이터 루트 자체를 확인
+                    const item = data.basis || data.item || data;
+                    // 상품번호(no)가 존재하는지 확인
+                    const foundNo = item.no || item.item_no || data.no;
+                    
+                    if (foundNo) {
                         fetchedProducts.push({
-                            no: item.no || item.item_no,
-                            title: item.title,
-                            price: parseInt(data.price?.dome || item.price || 0).toLocaleString(),
-                            img: (data.thumb?.big || item.thumb || "").replace('http://', 'https://')
+                            no: foundNo,
+                            title: item.title || data.title || "상품명 정보 없음",
+                            // 가격과 이미지가 깊은 곳에 있을 경우를 대비
+                            price: parseInt(data.price?.dome || item.price || data.price || 0).toLocaleString(),
+                            img: (data.thumb?.big || item.thumb || data.thumb || "").replace('http://', 'https://')
                         });
                     }
                 } else {
-                    // [공급사 ID 검색 시] getItemList의 응답 처리
+                    // 공급사 ID 검색 시
                     const list = data.list?.item;
                     if (list) {
                         const items = Array.isArray(list) ? list : [list];
@@ -130,16 +134,17 @@
                     }
                 }
 
-                if (fetchedProducts.length > 0) {
+                // 3. 결과 화면 처리
+                if (fetchedProducts.length > 0 && fetchedProducts[0].no) {
                     document.getElementById('search-result-keyword').innerText = keyword;
                     document.getElementById('search-section').classList.add('hidden');
                     document.getElementById('editor-step').classList.remove('hidden');
                     renderResults();
                 } else {
-                    alert("검색 결과가 없습니다. 입력값과 탭 선택을 확인해주세요.");
+                    alert("검색 결과가 없습니다. 입력값과 탭 선택(ID/번호)을 다시 확인해주세요.");
                 }
             } catch (err) {
-                alert("통신 오류가 발생했습니다. 구글 앱 스크립트 설정을 확인해주세요.");
+                alert("통신 오류가 발생했습니다. 구글 앱 스크립트 배포 상태(Anyone)를 확인해주세요.");
             } finally {
                 document.getElementById('search-btn').innerText = "조회하기";
             }
